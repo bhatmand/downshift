@@ -1,9 +1,8 @@
 // this is stuff that I couldn't think fit anywhere else
 // but we still want to have tested.
 
-import 'react-testing-library/cleanup-after-each'
 import React from 'react'
-import {render, fireEvent} from 'react-testing-library'
+import {render, fireEvent} from '@testing-library/react'
 import Downshift from '../'
 import {scrollIntoView} from '../utils'
 
@@ -44,5 +43,5 @@ test('does not scroll from an onMouseMove event', () => {
   // now let's make sure that we can still scroll items into view
   // ↓
   fireEvent.keyDown(input, {key: 'ArrowDown'})
-  expect(scrollIntoView).toHaveBeenCalled()
+  expect(scrollIntoView).toHaveBeenCalledWith(item, undefined)
 })

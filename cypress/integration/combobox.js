@@ -1,3 +1,9 @@
+// the combobox happens to be in the center of the page.
+// without specifying an x and y for the body events
+// we actually wind up firing events on the combobox.
+const bodyX = 100
+const bodyY = 300
+
 describe('combobox', () => {
   before(() => {
     cy.visit('/tests/combobox')
@@ -13,13 +19,13 @@ describe('combobox', () => {
       .should('have.value', 'Green')
   })
 
-  it('can up arrow to select last item', () => {
+  it('can arrow up to select last item', () => {
     cy.getByTestId('combobox-input')
       .type('{uparrow}{enter}') // open menu, last option is focused
       .should('have.value', 'Purple')
   })
 
-  it('can up arrow down select first item', () => {
+  it('can arrow down to select first item', () => {
     cy.getByTestId('combobox-input')
       .type('{downarrow}{enter}') // open menu, first option is focused
       .should('have.value', 'Black')
@@ -31,12 +37,24 @@ describe('combobox', () => {
       .should('have.value', 'Red')
   })
 
+  it('can use home arrow to select first item', () => {
+    cy.getByTestId('combobox-input')
+      .type('{downarrow}{downarrow}{home}{enter}') // open to first, go down to second, return to first by home.
+      .should('have.value', 'Black')
+  })
+
+  it('can use end arrow to select last item', () => {
+    cy.getByTestId('combobox-input')
+      .type('{downarrow}{end}{enter}') // open to first, go to last by end.
+      .should('have.value', 'Purple')
+  })
+
   it('resets the item on blur', () => {
     cy.getByTestId('combobox-input')
       .type('{downarrow}{enter}') // open and select first item
       .should('have.value', 'Black')
       .get('body')
-      .click()
+      .click(bodyX, bodyY)
       .getByTestId('combobox-input')
       .should('have.value', 'Black')
   })
@@ -61,12 +79,12 @@ describe('combobox', () => {
       .should('have.value', 'R')
       .click()
       .get('body')
-      .trigger('mouseup')
+      .trigger('mouseup', bodyX, bodyY)
       .getByTestId('combobox-input')
       .should('have.value', 'R')
       .blur()
       .get('body')
-      .trigger('click')
+      .trigger('click', bodyX, bodyY)
       .getByTestId('combobox-input')
       .should('have.value', 'Red')
   })
@@ -107,8 +125,8 @@ describe('combobox', () => {
     cy.getByTestId('combobox-input')
       .type('re')
       .get('body')
-      .trigger('touchstart')
-      .trigger('touchend')
+      .trigger('touchstart', bodyX, bodyY)
+      .trigger('touchend', bodyX, bodyY)
       .queryByTestId('downshift-item-0', {timeout: 10})
       .should('not.be.visible')
   })
@@ -117,9 +135,9 @@ describe('combobox', () => {
     cy.getByTestId('combobox-input')
       .type('re')
       .get('body')
-      .trigger('touchstart')
-      .trigger('touchmove')
-      .trigger('touchend')
+      .trigger('touchstart', bodyX, bodyY)
+      .trigger('touchmove', bodyX, bodyY + 20)
+      .trigger('touchend', bodyX, bodyY + 20)
       .queryByTestId('downshift-item-0', {timeout: 10})
       .should('be.visible')
   })

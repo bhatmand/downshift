@@ -1,6 +1,5 @@
-import 'react-testing-library/cleanup-after-each'
 import React from 'react'
-import {render, fireEvent} from 'react-testing-library'
+import {render, fireEvent} from '@testing-library/react'
 import Downshift from '../'
 import {setIdCounter} from '../utils'
 
@@ -12,7 +11,7 @@ beforeEach(() => {
 afterEach(() => console.error.mockRestore())
 
 test('clicking on a DOM node within an item selects that item', () => {
-  // inspiration: https://github.com/paypal/downshift/issues/113
+  // inspiration: https://github.com/downshift-js/downshift/issues/113
   const items = [{item: 'Chess'}, {item: 'Dominion'}, {item: 'Checkers'}]
   const {queryByTestId, childrenSpy} = renderDownshift({items})
   const firstButton = queryByTestId('item-0-button')
@@ -148,6 +147,7 @@ test(`getItemProps doesn't include event handlers when disabled is passed (for I
   const entry = Object.entries(props).find(
     ([key, value]) => key !== 'onMouseDown' && typeof value === 'function',
   )
+  // eslint-disable-next-line jest/no-if
   if (entry) {
     throw new Error(
       `getItemProps should not have any props that are callbacks. It has ${

@@ -1,5 +1,5 @@
 import React from 'react'
-import {render} from 'react-testing-library'
+import {render} from '@testing-library/react'
 import Downshift from '../'
 
 const MyDiv = ({innerRef, ...rest}) => <div ref={innerRef} {...rest} />
@@ -148,4 +148,26 @@ test('renders fine when rendering a composite component that uses refs forwardin
   )
   render(<MyComponent />)
   expect(console.error.mock.calls).toHaveLength(0)
+})
+
+test('has access to element when a ref is passed to getRootProps', () => {
+  const ref = {current: null}
+
+  const MyComponent = () => (
+    <Downshift
+      children={({getRootProps}) => (
+        <MyDivWithForwardedRef
+          {...getRootProps({
+            ref: e => {
+              ref.current = e
+            },
+          })}
+        />
+      )}
+    />
+  )
+
+  render(<MyComponent />)
+  expect(ref.current).not.toBeNull()
+  expect(ref.current).toBeInstanceOf(HTMLDivElement)
 })

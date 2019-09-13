@@ -1,6 +1,5 @@
-import 'react-testing-library/cleanup-after-each'
 import React from 'react'
-import {render, fireEvent} from 'react-testing-library'
+import {fireEvent, render} from '@testing-library/react'
 import Downshift from '../'
 import setA11yStatus from '../set-a11y-status'
 import * as utils from '../utils'
@@ -225,11 +224,13 @@ test('controlled highlighted index change scrolls the item into view', () => {
   // assuming that the test suite for utils.scrollIntoView will ensure
   // this functionality doesn't break.
   const oneHundredItems = Array.from({length: 100})
-  const renderFn = jest.fn(({getItemProps}) => (
-    <div data-testid="root">
-      {oneHundredItems.map((x, i) => (
-        <div key={i} {...getItemProps({item: i})} data-testid={`item-${i}`} />
-      ))}
+  const renderFn = jest.fn(({getItemProps, getMenuProps}) => (
+    <div>
+      <div data-testid="menu" {...getMenuProps()}>
+        {oneHundredItems.map((x, i) => (
+          <div key={i} {...getItemProps({item: i})} data-testid={`item-${i}`} />
+        ))}
+      </div>
     </div>
   ))
   const {container, updateProps, queryByTestId} = setup({
@@ -242,10 +243,10 @@ test('controlled highlighted index change scrolls the item into view', () => {
   expect(renderFn).toHaveBeenCalledTimes(1)
 
   expect(utils.scrollIntoView).toHaveBeenCalledTimes(1)
-  const rootDiv = queryByTestId('root')
+  const menuDiv = queryByTestId('menu')
   expect(utils.scrollIntoView).toHaveBeenCalledWith(
     queryByTestId('item-75'),
-    rootDiv,
+    menuDiv,
   )
 })
 

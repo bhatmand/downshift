@@ -1003,6 +1003,77 @@
         "bug",
         "code"
       ]
+    },
+    {
+      "login": "mdugue",
+      "name": "Manuel Dugué",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/894149?v=4",
+      "profile": "http://manueldugue.de",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "mkaradeniz",
+      "name": "Max Karadeniz",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/12477983?v=4",
+      "profile": "https://github.com/mkaradeniz",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "GonchuB",
+      "name": "Gonzalo Beviglia",
+      "avatar_url": "https://avatars3.githubusercontent.com/u/857221?v=4",
+      "profile": "https://medium.com/@gonchub",
+      "contributions": [
+        "bug",
+        "code",
+        "review"
+      ]
+    },
+    {
+      "login": "kilrain",
+      "name": "Brian Kilrain",
+      "avatar_url": "https://avatars2.githubusercontent.com/u/47700687?v=4",
+      "profile": "https://github.com/kilrain",
+      "contributions": [
+        "bug",
+        "code",
+        "test",
+        "doc"
+      ]
+    },
+    {
+      "login": "rincedd",
+      "name": "Gerd Zschaler",
+      "avatar_url": "https://avatars0.githubusercontent.com/u/321265?v=4",
+      "profile": "http://www.gzschaler.de",
+      "contributions": [
+        "code",
+        "bug"
+      ]
+    },
+    {
+      "login": "gaskar",
+      "name": "Karen Gasparyan",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/491166?v=4",
+      "profile": "https://github.com/gaskar",
+      "contributions": [
+        "code"
+      ]
+    },
+    {
+      "login": "kserjey",
+      "name": "Sergey Korchinskiy",
+      "avatar_url": "https://avatars1.githubusercontent.com/u/19753880?v=4",
+      "profile": "https://github.com/kserjey",
+      "contributions": [
+        "bug",
+        "code",
+        "test"
+      ]
     }
   ]
 }

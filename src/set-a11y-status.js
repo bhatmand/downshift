@@ -1,60 +1,39 @@
-// istanbul ignore next
-let statusDiv =
-  typeof document === 'undefined'
-    ? null
-    : document.getElementById('a11y-status-message')
+import {debounce} from './utils'
 
-let statuses = []
+let statusDiv
 
-/**
- * @param {String} status the status message
- */
-function setStatus(status) {
-  const isSameAsLast = statuses[statuses.length - 1] === status
-  if (isSameAsLast) {
-    statuses = [...statuses, status]
-  } else {
-    statuses = [status]
-  }
-  const div = getStatusDiv()
-
-  // Remove previous children
-  while (div.lastChild) {
-    div.removeChild(div.firstChild)
-  }
-
-  statuses.filter(Boolean).forEach((statusItem, index) => {
-    div.appendChild(getStatusChildDiv(statusItem, index))
-  })
-}
+const cleanupStatus = debounce(() => {
+  getStatusDiv().textContent = ''
+}, 500)
 
 /**
  * @param {String} status the status message
- * @param {Number} index the index
- * @return {HTMLElement} the child node
+ * @param {Object} documentProp document passed by the user.
  */
-function getStatusChildDiv(status, index) {
-  const display = index === statuses.length - 1 ? 'block' : 'none'
+function setStatus(status, documentProp) {
+  const div = getStatusDiv(documentProp)
+  if (!status) {
+    return
+  }
 
-  const childDiv = document.createElement('div')
-  childDiv.style.display = display
-  childDiv.textContent = status
-
-  return childDiv
+  div.textContent = status
+  cleanupStatus()
 }
 
 /**
- * Get the status node or create it if it does not already exist
- * @return {HTMLElement} the status node
+ * Get the status node or create it if it does not already exist.
+ * @param {Object} documentProp document passed by the user.
+ * @return {HTMLElement} the status node.
  */
-function getStatusDiv() {
+function getStatusDiv(documentProp = document) {
   if (statusDiv) {
     return statusDiv
   }
-  statusDiv = document.createElement('div')
+
+  statusDiv = documentProp.createElement('div')
   statusDiv.setAttribute('id', 'a11y-status-message')
   statusDiv.setAttribute('role', 'status')
-  statusDiv.setAttribute('aria-live', 'assertive')
+  statusDiv.setAttribute('aria-live', 'polite')
   statusDiv.setAttribute('aria-relevant', 'additions text')
   Object.assign(statusDiv.style, {
     border: '0',
@@ -66,7 +45,7 @@ function getStatusDiv() {
     position: 'absolute',
     width: '1px',
   })
-  document.body.appendChild(statusDiv)
+  documentProp.body.appendChild(statusDiv)
   return statusDiv
 }
 

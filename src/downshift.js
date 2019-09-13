@@ -1,28 +1,29 @@
 /* eslint camelcase:0 */
 
-import React, {Component} from 'react'
 import PropTypes from 'prop-types'
+import React, {Component} from 'react'
 import {isForwardRef} from 'react-is'
 import {isPreact, isReactNative} from './is.macro'
 import setA11yStatus from './set-a11y-status'
 import * as stateChangeTypes from './stateChangeTypes'
 import {
-  cbToCb,
   callAll,
   callAllEventHandlers,
+  cbToCb,
   debounce,
-  scrollIntoView,
   generateId,
   getA11yStatusMessage,
-  unwrapArray,
+  getElementProps,
   isDOMElement,
   isOrContainsNode,
-  getElementProps,
-  noop,
-  requiredProp,
-  pickState,
   isPlainObject,
+  noop,
   normalizeArrowKey,
+  pickState,
+  requiredProp,
+  scrollIntoView,
+  unwrapArray,
+  getNextWrappingIndex,
 } from './utils'
 
 class Downshift extends Component {
@@ -254,51 +255,29 @@ class Downshift extends Component {
     /* istanbul ignore else (react-native) */
     if (!isReactNative) {
       const node = this.getItemNodeFromIndex(this.getState().highlightedIndex)
-      this.props.scrollIntoView(node, this._rootNode)
+      this.props.scrollIntoView(node, this._menuNode)
     }
   }
 
   moveHighlightedIndex(amount, otherStateToSet) {
-    if (this.getState().isOpen) {
-      this.changeHighlightedIndex(amount, otherStateToSet)
-    } else {
-      this.openMenu(() => {
-        const {type} = otherStateToSet
-        const itemCount = this.getItemCount()
-        let newHighlightedIndex
-        // if there are items in the menu and event type is present.
-        if (itemCount && type) {
-          // on Arrow Down we highlight first option.
-          if (type === stateChangeTypes.keyDownArrowDown) {
-            newHighlightedIndex = 0
-          }
-          // on Arrow Up we highlight last option
-          if (type === stateChangeTypes.keyDownArrowUp) {
-            newHighlightedIndex = itemCount - 1
-          }
-        }
-        this.setHighlightedIndex(newHighlightedIndex, {...otherStateToSet})
-      })
+    const itemCount = this.getItemCount()
+    if (itemCount > 0) {
+      const nextHighlightedIndex = getNextWrappingIndex(
+        amount,
+        this.getState().highlightedIndex,
+        itemCount,
+      )
+      this.setHighlightedIndex(nextHighlightedIndex, otherStateToSet)
     }
   }
 
-  changeHighlightedIndex(moveAmount, otherStateToSet) {
+  highlightFirstOrLastIndex(event, first, otherStateToSet) {
     const itemsLastIndex = this.getItemCount() - 1
-    if (itemsLastIndex < 0) {
+    if (itemsLastIndex < 0 || !this.getState().isOpen) {
       return
     }
-    const {highlightedIndex} = this.getState()
-    let baseIndex = highlightedIndex
-    if (baseIndex === null) {
-      baseIndex = moveAmount > 0 ? -1 : itemsLastIndex + 1
-    }
-    let newIndex = baseIndex + moveAmount
-    if (newIndex < 0) {
-      newIndex = itemsLastIndex
-    } else if (newIndex > itemsLastIndex) {
-      newIndex = 0
-    }
-    this.setHighlightedIndex(newIndex, otherStateToSet)
+    event.preventDefault()
+    this.setHighlightedIndex(first ? 0 : itemsLastIndex, otherStateToSet)
   }
 
   clearSelection = cb => {
@@ -361,7 +340,7 @@ class Downshift extends Component {
     // so someone controlling the `inputValue` state gets notified of
     // the input change as soon as possible. This avoids issues with
     // preserving the cursor position.
-    // See https://github.com/paypal/downshift/issues/217 for more info.
+    // See https://github.com/downshift-js/downshift/issues/217 for more info.
     if (!isStateToSetFunction && stateToSet.hasOwnProperty('inputValue')) {
       this.props.onInputValueChange(stateToSet.inputValue, {
         ...this.getStateAndHelpers(),
@@ -529,7 +508,7 @@ class Downshift extends Component {
   rootRef = node => (this._rootNode = node)
 
   getRootProps = (
-    {refKey = 'ref', ...rest} = {},
+    {refKey = 'ref', ref, ...rest} = {},
     {suppressRefError = false} = {},
   ) => {
     // this is used in the render to know whether the user has called getRootProps.
@@ -539,7 +518,7 @@ class Downshift extends Component {
     this.getRootProps.suppressRefError = suppressRefError
     const {isOpen} = this.getState()
     return {
-      [refKey]: this.rootRef,
+      [refKey]: callAll(ref, this.rootRef),
       role: 'combobox',
       'aria-expanded': isOpen,
       'aria-haspopup': 'listbox',
@@ -554,18 +533,64 @@ class Downshift extends Component {
   keyDownHandlers = {
     ArrowDown(event) {
       event.preventDefault()
-      const amount = event.shiftKey ? 5 : 1
-      this.moveHighlightedIndex(amount, {
-        type: stateChangeTypes.keyDownArrowDown,
-      })
+
+      if (this.getState().isOpen) {
+        const amount = event.shiftKey ? 5 : 1
+        this.moveHighlightedIndex(amount, {
+          type: stateChangeTypes.keyDownArrowDown,
+        })
+      } else {
+        this.internalSetState(
+          {
+            isOpen: true,
+            type: stateChangeTypes.keyDownArrowDown,
+          },
+          () => {
+            const itemCount = this.getItemCount()
+            if (itemCount > 0) {
+              this.setHighlightedIndex(
+                getNextWrappingIndex(
+                  1,
+                  this.getState().highlightedIndex,
+                  itemCount,
+                ),
+                {type: stateChangeTypes.keyDownArrowDown},
+              )
+            }
+          },
+        )
+      }
     },
 
     ArrowUp(event) {
       event.preventDefault()
-      const amount = event.shiftKey ? -5 : -1
-      this.moveHighlightedIndex(amount, {
-        type: stateChangeTypes.keyDownArrowUp,
-      })
+
+      if (this.getState().isOpen) {
+        const amount = event.shiftKey ? -5 : -1
+        this.moveHighlightedIndex(amount, {
+          type: stateChangeTypes.keyDownArrowUp,
+        })
+      } else {
+        this.internalSetState(
+          {
+            isOpen: true,
+            type: stateChangeTypes.keyDownArrowUp,
+          },
+          () => {
+            const itemCount = this.getItemCount()
+            if (itemCount > 0) {
+              this.setHighlightedIndex(
+                getNextWrappingIndex(
+                  -1,
+                  this.getState().highlightedIndex,
+                  itemCount,
+                ),
+                {type: stateChangeTypes.keyDownArrowDown},
+              )
+            }
+          },
+        )
+      }
     },
 
     Enter(event) {
@@ -585,7 +610,11 @@ class Downshift extends Component {
 
     Escape(event) {
       event.preventDefault()
-      this.reset({type: stateChangeTypes.keyDownEscape})
+      this.reset({
+        type: stateChangeTypes.keyDownEscape,
+        selectedItem: null,
+        inputValue: '',
+      })
     },
   }
 
@@ -597,6 +626,21 @@ class Downshift extends Component {
     ' '(event) {
       event.preventDefault()
       this.toggleMenu({type: stateChangeTypes.keyDownSpaceButton})
+    },
+  }
+
+  inputKeyDownHandlers = {
+    ...this.keyDownHandlers,
+    Home(event) {
+      this.highlightFirstOrLastIndex(event, true, {
+        type: stateChangeTypes.keyDownHome,
+      })
+    },
+
+    End(event) {
+      this.highlightFirstOrLastIndex(event, false, {
+        type: stateChangeTypes.keyDownEnd,
+      })
     },
   }
 
@@ -612,13 +656,13 @@ class Downshift extends Component {
     const enabledEventHandlers = isReactNative
       ? /* istanbul ignore next (react-native) */
         {
-          onPress: callAllEventHandlers(onPress, this.button_handleClick),
+          onPress: callAllEventHandlers(onPress, this.buttonHandleClick),
         }
       : {
-          onClick: callAllEventHandlers(onClick, this.button_handleClick),
-          onKeyDown: callAllEventHandlers(onKeyDown, this.button_handleKeyDown),
-          onKeyUp: callAllEventHandlers(onKeyUp, this.button_handleKeyUp),
-          onBlur: callAllEventHandlers(onBlur, this.button_handleBlur),
+          onClick: callAllEventHandlers(onClick, this.buttonHandleClick),
+          onKeyDown: callAllEventHandlers(onKeyDown, this.buttonHandleKeyDown),
+          onKeyUp: callAllEventHandlers(onKeyUp, this.buttonHandleKeyUp),
+          onBlur: callAllEventHandlers(onBlur, this.buttonHandleBlur),
         }
     const eventHandlers = rest.disabled ? {} : enabledEventHandlers
     return {
@@ -632,19 +676,19 @@ class Downshift extends Component {
     }
   }
 
-  button_handleKeyUp = event => {
+  buttonHandleKeyUp = event => {
     // Prevent click event from emitting in Firefox
     event.preventDefault()
   }
 
-  button_handleKeyDown = event => {
+  buttonHandleKeyDown = event => {
     const key = normalizeArrowKey(event)
     if (this.buttonKeyDownHandlers[key]) {
       this.buttonKeyDownHandlers[key].call(this, event)
     }
   }
 
-  button_handleClick = event => {
+  buttonHandleClick = event => {
     event.preventDefault()
     // handle odd case for Safari and Firefox which
     // don't give the button the focus properly.
@@ -669,7 +713,7 @@ class Downshift extends Component {
     }
   }
 
-  button_handleBlur = event => {
+  buttonHandleBlur = event => {
     const blurTarget = event.target // Save blur target for comparison with activeElement later
     // Need setTimeout, so that when the user presses Tab, the activeElement is the next focused element, not body element
     this.internalSetTimeout(() => {
@@ -720,10 +764,10 @@ class Downshift extends Component {
         [onChangeKey]: callAllEventHandlers(
           onChange,
           onInput,
-          this.input_handleChange,
+          this.inputHandleChange,
         ),
-        onKeyDown: callAllEventHandlers(onKeyDown, this.input_handleKeyDown),
-        onBlur: callAllEventHandlers(onBlur, this.input_handleBlur),
+        onKeyDown: callAllEventHandlers(onKeyDown, this.inputHandleKeyDown),
+        onBlur: callAllEventHandlers(onBlur, this.inputHandleBlur),
       }
     }
 
@@ -733,14 +777,15 @@ class Downshift extends Component {
         onChange: callAllEventHandlers(
           onChange,
           onInput,
-          this.input_handleChange,
+          this.inputHandleChange,
         ),
         onChangeText: callAllEventHandlers(
           onChangeText,
           onInput,
-          this.input_handleTextChange,
+          text => this.inputHandleChange({nativeEvent: {text}}),
+          this.inputHandleTextChange,
         ),
-        onBlur: callAllEventHandlers(onBlur, this.input_handleBlur),
+        onBlur: callAllEventHandlers(onBlur, this.inputHandleBlur),
       }
     }
 
@@ -762,36 +807,31 @@ class Downshift extends Component {
     }
   }
 
-  input_handleKeyDown = event => {
+  inputHandleKeyDown = event => {
     const key = normalizeArrowKey(event)
-    if (key && this.keyDownHandlers[key]) {
-      this.keyDownHandlers[key].call(this, event)
+    if (key && this.inputKeyDownHandlers[key]) {
+      this.inputKeyDownHandlers[key].call(this, event)
     }
   }
 
-  input_handleChange = event => {
+  inputHandleChange = event => {
     this.internalSetState({
       type: stateChangeTypes.changeInput,
       isOpen: true,
       inputValue: isReactNative
         ? /* istanbul ignore next (react-native) */ event.nativeEvent.text
         : event.target.value,
+      highlightedIndex: this.props.defaultHighlightedIndex,
     })
   }
 
-  input_handleTextChange /* istanbul ignore next (react-native) */ = text => {
-    this.internalSetState({
-      type: stateChangeTypes.changeInput,
-      isOpen: true,
-      inputValue: text,
-    })
-  }
-
-  input_handleBlur = () => {
+  inputHandleBlur = () => {
     // Need setTimeout, so that when the user presses Tab, the activeElement is the next focused element, not the body element
     this.internalSetTimeout(() => {
       const downshiftButtonIsActive =
         this.props.environment.document &&
+        !!this.props.environment.document.activeElement &&
+        !!this.props.environment.document.activeElement.dataset &&
         this.props.environment.document.activeElement.dataset.toggle &&
         (this._rootNode &&
           this._rootNode.contains(
@@ -896,7 +936,7 @@ class Downshift extends Component {
     return {
       id: this.getItemId(index),
       role: 'option',
-      'aria-selected': this.getState().selectedItem === item,
+      'aria-selected': this.getState().highlightedIndex === index,
       ...eventHandlers,
       ...rest,
     }
@@ -924,13 +964,20 @@ class Downshift extends Component {
     otherStateToSet = pickState(otherStateToSet)
     this.internalSetState(
       ({isOpen}) => {
-        return {isOpen: !isOpen, ...otherStateToSet}
+        return {
+          isOpen: !isOpen,
+          ...(isOpen && {
+            highlightedIndex: this.props.defaultHighlightedIndex,
+          }),
+          ...otherStateToSet,
+        }
       },
       () => {
-        const {isOpen} = this.getState()
+        const {isOpen, highlightedIndex} = this.getState()
         if (isOpen) {
-          // highlight default index
-          this.setHighlightedIndex(undefined, otherStateToSet)
+          if (this.getItemCount() > 0 && typeof highlightedIndex === 'number') {
+            this.setHighlightedIndex(highlightedIndex, otherStateToSet)
+          }
         }
         cbToCb(cb)()
       },
@@ -958,7 +1005,7 @@ class Downshift extends Component {
     })
     this.previousResultCount = resultCount
 
-    setA11yStatus(status)
+    setA11yStatus(status, this.props.environment.document)
   }, 200)
 
   componentDidMount() {
@@ -1036,23 +1083,37 @@ class Downshift extends Component {
           )
         }
       }
+      const {environment} = this.props
 
-      this.props.environment.addEventListener('mousedown', onMouseDown)
-      this.props.environment.addEventListener('mouseup', onMouseUp)
-      this.props.environment.addEventListener('touchstart', onTouchStart)
-      this.props.environment.addEventListener('touchmove', onTouchMove)
-      this.props.environment.addEventListener('touchend', onTouchEnd)
+      environment.addEventListener('mousedown', onMouseDown)
+      environment.addEventListener('mouseup', onMouseUp)
+      environment.addEventListener('touchstart', onTouchStart)
+      environment.addEventListener('touchmove', onTouchMove)
+      environment.addEventListener('touchend', onTouchEnd)
 
       this.cleanup = () => {
         this.internalClearTimeouts()
         this.updateStatus.cancel()
-        this.props.environment.removeEventListener('mousedown', onMouseDown)
-        this.props.environment.removeEventListener('mouseup', onMouseUp)
-        this.props.environment.removeEventListener('touchstart', onTouchStart)
-        this.props.environment.removeEventListener('touchmove', onTouchMove)
-        this.props.environment.removeEventListener('touchend', onTouchEnd)
+        environment.removeEventListener('mousedown', onMouseDown)
+        environment.removeEventListener('mouseup', onMouseUp)
+        environment.removeEventListener('touchstart', onTouchStart)
+        environment.removeEventListener('touchmove', onTouchMove)
+        environment.removeEventListener('touchend', onTouchEnd)
       }
     }
+  }
+
+  shouldScroll(prevState, prevProps) {
+    const {highlightedIndex: currentHighlightedIndex} =
+      this.props.highlightedIndex === undefined ? this.getState() : this.props
+    const {highlightedIndex: prevHighlightedIndex} =
+      prevProps.highlightedIndex === undefined ? prevState : prevProps
+    const scrollWhenOpen =
+      currentHighlightedIndex && this.getState().isOpen && !prevState.isOpen
+    const scrollWhenNavigating =
+      currentHighlightedIndex !== prevHighlightedIndex
+
+    return scrollWhenOpen || scrollWhenNavigating
   }
 
   componentDidUpdate(prevProps, prevState) {
@@ -1081,15 +1142,7 @@ class Downshift extends Component {
       })
     }
 
-    const current =
-      this.props.highlightedIndex === undefined ? this.state : this.props
-    const prev =
-      prevProps.highlightedIndex === undefined ? prevState : prevProps
-
-    if (
-      current.highlightedIndex !== prev.highlightedIndex &&
-      !this.avoidScrolling
-    ) {
+    if (!this.avoidScrolling && this.shouldScroll(prevState, prevProps)) {
       this.scrollHighlightedItemIntoView()
     }
 
@@ -1196,7 +1249,7 @@ function validateGetRootPropsCalledCorrectly(element, {refKey}) {
 }
 
 function validateControlledUnchanged(prevProps, nextProps) {
-  const warningDescription = `This prop should not switch from controlled to uncontrolled (or vice versa). Decide between using a controlled or uncontrolled Downshift element for the lifetime of the component. More info: https://github.com/paypal/downshift#control-props`
+  const warningDescription = `This prop should not switch from controlled to uncontrolled (or vice versa). Decide between using a controlled or uncontrolled Downshift element for the lifetime of the component. More info: https://github.com/downshift-js/downshift#control-props`
   ;['selectedItem', 'isOpen', 'inputValue', 'highlightedIndex'].forEach(
     propKey => {
       if (

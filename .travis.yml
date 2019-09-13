@@ -1,5 +1,10 @@
 sudo: false
 language: node_js
+addons:
+  apt:
+    packages:
+      # Ubuntu 16+ does not install this dependency by default, so we need to install it ourselves
+      - libgconf-2-4
 cache:
   directories:
     - ~/.npm
@@ -13,8 +18,8 @@ before_script:
 script:
   - kcd-scripts validate lint,build-and-test,test:cover
   - kcd-scripts validate test:ssr,test:cypress
-  # TODO: fix typescript/flow
-  # - kcd-scripts validate test:flow:coverage,test:ts
+  - kcd-scripts validate test:ssr
+  - kcd-scripts validate test:flow:coverage,test:ts
 after_success: kcd-scripts travis-after-success
 branches:
   only: master
